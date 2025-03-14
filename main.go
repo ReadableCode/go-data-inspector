@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"flag"
 	"os"
+	
+	"github.com/olekukonko/tablewriter"
 )
 
 func main() {
@@ -25,9 +27,11 @@ func main() {
 	}
 	
 	fmt.Println("CSV Contents:")
-	for _, row := range data {
-		fmt.Println(row)
-	}
+	// for _, row := range data {
+	// 	fmt.Println(row)
+	// }
+	
+	printTable(data)
 	
 	fmt.Println("Go Data Inspector - CLI Tool")
 	fmt.Println("Processing file:", *filePath)
@@ -42,4 +46,20 @@ func readCSV(filePath string) ([][]string, error) {
 	
 	reader := csv.NewReader(file)
 	return reader.ReadAll() // reads the entire file into memory
+}
+
+func printTable(data [][]string) {
+	if len(data) == 0 {
+		fmt.Println("No data to display")
+		return
+	}
+	
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader(data[0]) // first row is the header
+	
+	for _, row := range data[1:] {
+		table.Append(row)
+	}
+	
+	table.Render()
 }

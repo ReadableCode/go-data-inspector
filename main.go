@@ -8,13 +8,17 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sort"
 	
 	"github.com/olekukonko/tablewriter"
 )
 
 func main() {
+	// Collect command-line arguments
 	filePath := flag.String("file","","Path to the Input File")
 	filter := flag.String("filter", "", "Filter condition (e.g., Age>30)")
+	sortBy := flag.String("sort", "", "Column to sort by (e.g., Age)")
+	desc := flag.Bool("desc", false, "Sort in descending order")
 	flag.Parse()
 
 	// Check if the file path is provided
@@ -34,6 +38,14 @@ func main() {
 		data, err = applyFilter(data, *filter)
 		if err != nil {
 			fmt.Println("Error applying filter:", err)
+			os.Exit(1)
+		}
+	}
+	
+	if *sortBy != "" {
+		err = sortCSV(data, *sortBy, *desc)
+		if err != nil {
+			fmt.Println("Error sorting CSV:", err)
 			os.Exit(1)
 		}
 	}
@@ -138,6 +150,53 @@ func applyFilter(data [][]string, filter string) ([][]string, error) {
 	return filteredData, nil
 
 }
+
+func sortCSV(data [][]string, sortBy string, descending bool) error {
+    if len(data) < 2 {
+        return errors.New("no data to sort")
+    }
+
+    // Find the column index
+    colIndex := -1
+    for i, colName := range data[0] {
+        if strings.EqualFold(colName, sortBy) {
+            colIndex = i
+            break
+        }
+    }
+    if colIndex == -1 {
+        return fmt.Errorf("column '%s' not found", sortBy)
+    }
+
+    // Check if column is numeric
+    isNumeric := true
+    for _, row := range data[1:] {
+        if _, err := strconv.ParseFloat(row[colIndex], 64); err != nil {
+            isNumeric = false
+            break
+        }
+    }
+
+    // Sorting function
+    sort.SliceStable(data[1:], func(i, j int) bool {
+        if isNumeric {
+            a, _ := strconv.ParseFloat(data[i+1][colIndex], 64)
+            b, _ := strconv.ParseFloat(data[j+1][colIndex], 64)
+            if descending {
+                return a > b
+            }
+            return a < b
+        } else {
+            if descending {
+                return data[i+1][colIndex] > data[j+1][colIndex]
+            }
+            return data[i+1][colIndex] < data[j+1][colIndex]
+        }
+    })
+
+    return nil
+}
+
 
 func printTable(data [][]string) {
 	if len(data) == 0 {

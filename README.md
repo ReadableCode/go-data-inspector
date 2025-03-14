@@ -16,5 +16,7 @@ touch main.go
 
 ```bash
 go mod tidy
+go run main.go --file .\data\data.csv
 go run main.go --file .\data\data.csv --filter "Age>=30"
+go run main.go --file .\data\data.csv --filter "Age>=30" --sort "Age" --desc
 ```

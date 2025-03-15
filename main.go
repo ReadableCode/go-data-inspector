@@ -10,7 +10,9 @@ import (
 	"strings"
 	"sort"
 	
+	"github.com/gdamore/tcell/v2"
 	"github.com/olekukonko/tablewriter"
+	"github.com/rivo/tview"
 )
 
 func main() {
@@ -19,11 +21,12 @@ func main() {
 	filter := flag.String("filter", "", "Filter condition (e.g., Age>30)")
 	sortBy := flag.String("sort", "", "Column to sort by (e.g., Age)")
 	desc := flag.Bool("desc", false, "Sort in descending order")
+	interactive := flag.Bool("interactive", false, "Launch interactive mode")
 	flag.Parse()
 
 	// Check if the file path is provided
 	if *filePath == "" {
-		fmt.Println("Usage: goinspector --file <path to the input file>")
+        fmt.Println("Usage: goinspector --file <path-to-csv> [--filter column>value] [--sort column] [--desc] [--interactive]")
 		os.Exit(1)
 	}
 	
@@ -48,6 +51,11 @@ func main() {
 			fmt.Println("Error sorting CSV:", err)
 			os.Exit(1)
 		}
+	}
+	
+	if *interactive {
+		runInteractiveTable(data)
+		return
 	}
 	
 	printTable(data)
@@ -212,4 +220,53 @@ func printTable(data [][]string) {
 	}
 	
 	table.Render()
+}
+
+func runInteractiveTable(data [][]string) {
+    app := tview.NewApplication()
+
+    table := tview.NewTable().
+        SetBorders(true)
+
+    // Set column headers
+    for col, header := range data[0] {
+        table.SetCell(0, col,
+            tview.NewTableCell(header).
+                SetTextColor(tcell.ColorYellow).
+                SetSelectable(false).
+                SetAlign(tview.AlignCenter))
+    }
+
+    // Add rows to the table
+    for rowIndex, row := range data[1:] {
+        for colIndex, cell := range row {
+            table.SetCell(rowIndex+1, colIndex,
+                tview.NewTableCell(cell).
+                    SetTextColor(tcell.ColorWhite).
+                    SetAlign(tview.AlignLeft))
+        }
+    }
+
+    // Allow arrow key navigation
+    table.SetSelectable(true, false)
+
+    // Set up UI layout
+    flex := tview.NewFlex().
+        SetDirection(tview.FlexRow).
+        AddItem(tview.NewTextView().
+            SetText("Press ESC to exit").
+            SetTextColor(tcell.ColorGreen), 1, 1, false).
+        AddItem(table, 0, 1, true)
+
+    // Handle key events
+    table.SetDoneFunc(func(key tcell.Key) {
+        if key == tcell.KeyEscape {
+            app.Stop()
+        }
+    })
+
+    // Run the app
+    if err := app.SetRoot(flex, true).Run(); err != nil {
+        fmt.Println("Error running interactive mode:", err)
+    }
 }

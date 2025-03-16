@@ -14,27 +14,29 @@ cd backend
 touch main.go
 ```
 
-## Run the Go program
+## Run the Go program without compiling it separately
 
 ```bash
 cd backend
 go mod tidy
-# run the app with options
-go run . # to host the web version
+# run the web app
+go run .
+# run the cli app
 go run . --cli --file ..\data\data.csv
 go run . --cli --file ..\data\data.csv --filter "Age>=30"
 go run . --cli --file ..\data\data.csv --filter "Age>=30" --sort "Age" --desc
 go run . --cli --file ..\data\data.csv --interactive
 ```
 
-## Compile the Go program
+## Compile the Go program and run it
 
 ```bash
 cd backend
 go mod tidy
 go build
-# run the app with options
+# run the web app
 .\go-data-inspector
+# run the cli app
 .\go-data-inspector --cli --file ..\data\data.csv
 .\go-data-inspector --cli --file ..\data\data.csv --filter "Age>=30"
 .\go-data-inspector --cli --file ..\data\data.csv --filter "Age>=30" --sort "Age" --desc

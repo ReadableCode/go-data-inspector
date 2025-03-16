@@ -5,45 +5,75 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Go Data Inspector</title>
-  <script>
-    async function uploadCSV(event) {
-      event.preventDefault();
-      let formData = new FormData(document.getElementById("csvForm"));
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
 
+<body>
+  <nav>
+    <a href="/">Home</a>
+    <!-- <a href="/articles">Articles</a>
+      <a href="/projects">Projects</a>
+      <a href="/contact">Contact</a>
+      <a href="/about">About</a> -->
+  </nav>
+  <h2>Upload CSV File</h2>
+  <form id="csvForm">
+    <input type="file" name="csvfile" required>
+    <button type="submit">Upload</button>
+  </form>
+
+  <h3>Filter CSV</h3>
+  <input type="text" id="filterColumn" placeholder="Column Name">
+  <input type="text" id="filterCondition" placeholder="e.g., >30, =John">
+  <button id="filterButton">Apply Filter</button>
+
+  <h3>Sort CSV</h3>
+  <input type="text" id="sortColumn" placeholder="Column Name">
+  <button id="sortAsc">Sort Ascending</button>
+  <button id="sortDesc">Sort Descending</button>
+
+  <h3>Reset Data</h3>
+  <button id="resetButton">Reset to Original</button>
+
+  <h3>CSV Data:</h3>
+  <div id="output"></div>
+
+  <script>
+    document.getElementById("csvForm").onsubmit = async function (event) {
+      event.preventDefault();
+      let formData = new FormData(this);
       let response = await fetch("/upload", { method: "POST", body: formData });
       let result = await response.json();
+      displayTable(result.data);
+    };
 
-      if (result.data && result.data.length > 0) {
-        displayTable(result.data);
-      } else {
-        document.getElementById("output").innerHTML = "<p>No data found.</p>";
-      }
-    }
-
-    async function filterCSV() {
+    document.getElementById("filterButton").onclick = async function () {
       let column = document.getElementById("filterColumn").value;
       let condition = document.getElementById("filterCondition").value;
       let response = await fetch(`/filter?column=${encodeURIComponent(column)}&condition=${encodeURIComponent(condition)}`);
       let result = await response.json();
+      displayTable(result.data);
+    };
 
-      if (result.data && result.data.length > 0) {
-        displayTable(result.data);
-      } else {
-        document.getElementById("output").innerHTML = "<p>No data found.</p>";
-      }
-    }
-
-    async function sortCSV(descending) {
+    document.getElementById("sortAsc").onclick = async function () {
       let column = document.getElementById("sortColumn").value;
-      let response = await fetch(`/sort?column=${encodeURIComponent(column)}&desc=${descending}`);
+      let response = await fetch(`/sort?column=${encodeURIComponent(column)}&desc=false`);
       let result = await response.json();
+      displayTable(result.data);
+    };
 
-      if (result.data && result.data.length > 0) {
-        displayTable(result.data);
-      } else {
-        document.getElementById("output").innerHTML = "<p>No data found.</p>";
-      }
-    }
+    document.getElementById("sortDesc").onclick = async function () {
+      let column = document.getElementById("sortColumn").value;
+      let response = await fetch(`/sort?column=${encodeURIComponent(column)}&desc=true`);
+      let result = await response.json();
+      displayTable(result.data);
+    };
+
+    document.getElementById("resetButton").onclick = async function () {
+      let response = await fetch("/reset");
+      let result = await response.json();
+      displayTable(result.data);
+    };
 
     function displayTable(data) {
       let tableContainer = document.getElementById("output");
@@ -52,7 +82,6 @@
       let table = document.createElement("table");
       table.border = "1";
 
-      // Create table header
       let thead = document.createElement("thead");
       let headerRow = document.createElement("tr");
       data[0].forEach(header => {
@@ -63,7 +92,6 @@
       thead.appendChild(headerRow);
       table.appendChild(thead);
 
-      // Create table body
       let tbody = document.createElement("tbody");
       for (let i = 1; i < data.length; i++) {
         let row = document.createElement("tr");
@@ -78,48 +106,6 @@
       tableContainer.appendChild(table);
     }
   </script>
-</head>
-
-<body>
-  <h2>Upload CSV File</h2>
-  <form id="csvForm" onsubmit="uploadCSV(event)">
-    <input type="file" name="csvfile" required>
-    <button type="submit">Upload</button>
-  </form>
-
-  <br>
-
-  <h3>Filter CSV</h3>
-  <input type="text" id="filterColumn" placeholder="Column Name">
-  <input type="text" id="filterCondition" placeholder="e.g., >30, =John">
-  <button onclick="filterCSV()">Apply Filter</button>
-
-  <br>
-
-  <h3>Sort CSV</h3>
-  <input type="text" id="sortColumn" placeholder="Column Name">
-  <button onclick="sortCSV(false)">Sort Ascending</button>
-  <button onclick="sortCSV(true)">Sort Descending</button>
-  
-  <h3>Reset Data</h3>
-  <button onclick="resetCSV()">Reset to Original</button>
-  
-  <script>
-    async function resetCSV() {
-      let response = await fetch("/reset");
-      let result = await response.json();
-
-      if (result.data && result.data.length > 0) {
-        displayTable(result.data);
-      } else {
-        document.getElementById("output").innerHTML = "<p>No data found.</p>";
-      }
-    }
-  </script>
-
-  <br>
-  <h3>CSV Data:</h3>
-  <div id="output"></div>
 </body>
 
 </html>

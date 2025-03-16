@@ -14,15 +14,29 @@ cd backend
 touch main.go
 ```
 
-## Run the main.go file
+## Run the Go program
 
 ```bash
 cd backend
 go mod tidy
 # run the app with options
-go run main.go # to host the web version
-go run main.go --cli --file ..\data\data.csv
-go run main.go --cli --file ..\data\data.csv --filter "Age>=30"
-go run main.go --cli --file ..\data\data.csv --filter "Age>=30" --sort "Age" --desc
-go run main.go --cli --file ..\data\data.csv --interactive
+go run . # to host the web version
+go run . --cli --file ..\data\data.csv
+go run . --cli --file ..\data\data.csv --filter "Age>=30"
+go run . --cli --file ..\data\data.csv --filter "Age>=30" --sort "Age" --desc
+go run . --cli --file ..\data\data.csv --interactive
+```
+
+## Compile the Go program
+
+```bash
+cd backend
+go mod tidy
+go build
+# run the app with options
+.\go-data-inspector
+.\go-data-inspector --cli --file ..\data\data.csv
+.\go-data-inspector --cli --file ..\data\data.csv --filter "Age>=30"
+.\go-data-inspector --cli --file ..\data\data.csv --filter "Age>=30" --sort "Age" --desc
+.\go-data-inspector --cli --file ..\data\data.csv --interactive
 ```

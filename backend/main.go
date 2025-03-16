@@ -11,18 +11,84 @@ import (
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/gofiber/fiber/v2"
 	"github.com/olekukonko/tablewriter"
 	"github.com/rivo/tview"
 )
 
+var templatesDir = "../frontend/templates"
+
 func main() {
 	// Collect command-line arguments
+	cliMode := flag.Bool("cli", false, "Run in CLI mode")
 	filePath := flag.String("file", "", "Path to the Input File")
 	filter := flag.String("filter", "", "Filter condition (e.g., Age>30)")
 	sortBy := flag.String("sort", "", "Column to sort by (e.g., Age)")
 	desc := flag.Bool("desc", false, "Sort in descending order")
 	interactive := flag.Bool("interactive", false, "Launch interactive mode")
 	flag.Parse()
+
+	if *cliMode {
+		// Run CLI Mode
+		fmt.Println("Running in CLI mode...")
+		runCLIMode(
+			filePath,
+			filter,
+			sortBy,
+			desc,
+			interactive,
+		)
+		return
+	}
+
+	// Run Web Server
+	hostSiteWithFiber()
+}
+
+func hostSiteWithFiber() {
+	app := fiber.New()
+
+	// Serve frontend files
+	app.Static("/", "../frontend/templates/index.html")
+	app.Static("/css", "../frontend/css")
+
+	// Upload route
+	app.Post("/upload", handleUpload)
+
+	app.Listen(":8505")
+}
+
+func handleUpload(c *fiber.Ctx) error {
+	file, err := c.FormFile("csvfile")
+	if err != nil {
+		return c.Status(400).SendString("Error: No file uploaded")
+	}
+
+	// Open uploaded file
+	src, err := file.Open()
+	if err != nil {
+		return c.Status(500).SendString("Failed to read file")
+	}
+	defer src.Close()
+
+	// Read CSV data
+	reader := csv.NewReader(src)
+	data, err := reader.ReadAll()
+	if err != nil {
+		return c.Status(500).SendString("Failed to parse CSV")
+	}
+
+	// Convert to JSON response
+	return c.JSON(fiber.Map{"data": data})
+}
+
+func runCLIMode(
+	filePath *string,
+	filter *string,
+	sortBy *string,
+	desc *bool,
+	interactive *bool,
+) {
 
 	// Check if the file path is provided
 	if *filePath == "" {

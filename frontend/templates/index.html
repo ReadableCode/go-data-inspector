@@ -2,15 +2,56 @@
 <html lang="en">
 
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Go Data Inspector</title>
   <link rel="stylesheet" href="/css/styles.css" />
   <script>
     async function uploadCSV(event) {
       event.preventDefault();
       let formData = new FormData(document.getElementById("csvForm"));
+
       let response = await fetch("/upload", { method: "POST", body: formData });
       let result = await response.json();
-      document.getElementById("output").innerText = JSON.stringify(result.data, null, 2);
+
+      if (result.data && result.data.length > 0) {
+        displayTable(result.data);
+      } else {
+        document.getElementById("output").innerHTML = "<p>No data found.</p>";
+      }
+    }
+
+    function displayTable(data) {
+      let tableContainer = document.getElementById("output");
+      tableContainer.innerHTML = "";
+
+      let table = document.createElement("table");
+      table.border = "1";
+
+      // Create table header
+      let thead = document.createElement("thead");
+      let headerRow = document.createElement("tr");
+      data[0].forEach(header => {
+        let th = document.createElement("th");
+        th.textContent = header;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      // Create table body
+      let tbody = document.createElement("tbody");
+      for (let i = 1; i < data.length; i++) {
+        let row = document.createElement("tr");
+        data[i].forEach(cell => {
+          let td = document.createElement("td");
+          td.textContent = cell;
+          row.appendChild(td);
+        });
+        tbody.appendChild(row);
+      }
+      table.appendChild(tbody);
+      tableContainer.appendChild(table);
     }
   </script>
 </head>

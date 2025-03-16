@@ -100,6 +100,22 @@
   <input type="text" id="sortColumn" placeholder="Column Name">
   <button onclick="sortCSV(false)">Sort Ascending</button>
   <button onclick="sortCSV(true)">Sort Descending</button>
+  
+  <h3>Reset Data</h3>
+  <button onclick="resetCSV()">Reset to Original</button>
+  
+  <script>
+    async function resetCSV() {
+      let response = await fetch("/reset");
+      let result = await response.json();
+
+      if (result.data && result.data.length > 0) {
+        displayTable(result.data);
+      } else {
+        document.getElementById("output").innerHTML = "<p>No data found.</p>";
+      }
+    }
+  </script>
 
   <br>
   <h3>CSV Data:</h3>

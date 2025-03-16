@@ -3,6 +3,7 @@
 
 <head>
   <title>Go Data Inspector</title>
+  <link rel="stylesheet" href="/css/styles.css" />
   <script>
     async function uploadCSV(event) {
       event.preventDefault();
@@ -15,6 +16,13 @@
 </head>
 
 <body>
+  <nav>
+    <a href="/">Home</a>
+    <!-- <a href="/articles">Articles</a>
+    <a href="/projects">Projects</a>
+    <a href="/contact">Contact</a>
+    <a href="/about">About</a> -->
+  </nav>
   <h2>Upload CSV File</h2>
   <form id="csvForm" onsubmit="uploadCSV(event)">
     <input type="file" name="csvfile" required>

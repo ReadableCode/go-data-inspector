@@ -2,69 +2,136 @@ package main
 
 import (
 	"bufio"
-	"fmt"
+	"html/template"
+	"log"
+	"net/http"
 	"os/exec"
 	"sync"
+
+	"github.com/gorilla/websocket"
 )
 
-// Function to run a Python script concurrently and stream its output
-func runPythonScript(script string, wg *sync.WaitGroup) {
-	defer wg.Done()
+// WebSocket upgrader
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
 
+// Store active WebSocket connections
+var clients = make(map[*websocket.Conn]struct{})
+var clientsLock sync.Mutex
+
+// List of Python scripts
+var scripts = []string{"script1.py", "script2.py"}
+
+// Serve the HTML page
+func serveHome(w http.ResponseWriter, r *http.Request) {
+	tmpl, _ := template.New("index").Parse(`
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<title>Script Runner</title>
+			<script>
+				let socket = new WebSocket("ws://" + window.location.host + "/ws");
+				socket.onmessage = function(event) {
+					document.getElementById("output").innerText += event.data + "\n";
+				};
+				
+				function startScript(scriptName) {
+					socket.send(scriptName);
+				}
+			</script>
+		</head>
+		<body>
+			<h1>Script Runner</h1>
+			{{range .}}
+				<button onclick="startScript('{{.}}')">{{.}}</button>
+			{{end}}
+			<pre id="output" style="border:1px solid #000; padding:10px; width:80%; height:300px; overflow:auto;"></pre>
+		</body>
+		</html>
+	`)
+	tmpl.Execute(w, scripts)
+}
+
+// Run a Python script and stream output to all connected WebSockets
+func runPythonScript(script string) {
 	cmd := exec.Command("python", script)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		fmt.Println("[Error]: Failed to create stdout pipe for", script, ":", err)
-		return
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		fmt.Println("[Error]: Failed to create stderr pipe for", script, ":", err)
-		return
-	}
+	stdout, _ := cmd.StdoutPipe()
+	stderr, _ := cmd.StderrPipe()
 
 	if err := cmd.Start(); err != nil {
-		fmt.Println("[Error]: Failed to start", script, ":", err)
+		sendToAllClients("[Error]: Failed to start " + script)
 		return
 	}
 
-	// Ensure goroutines for reading stdout and stderr start before waiting
-	var outputWg sync.WaitGroup
-	outputWg.Add(2)
+	var wg sync.WaitGroup
+	wg.Add(2)
 
 	go func() {
-		defer outputWg.Done()
+		defer wg.Done()
 		scanner := bufio.NewScanner(stdout)
 		for scanner.Scan() {
-			fmt.Println("[Output "+script+"]:", scanner.Text())
+			sendToAllClients(script + ": " + scanner.Text())
 		}
 	}()
 
 	go func() {
-		defer outputWg.Done()
+		defer wg.Done()
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
-			fmt.Println("[Error "+script+"]:", scanner.Text())
+			sendToAllClients("[Error] " + script + ": " + scanner.Text())
 		}
 	}()
 
-	// Wait for both output goroutines to finish reading before waiting for process exit
-	outputWg.Wait()
+	wg.Wait()
+	cmd.Wait()
+}
 
-	// Now wait for the script to fully exit
-	if err := cmd.Wait(); err != nil {
-		fmt.Println("[Error]:", script, "exited with error:", err)
+// Send a message to all connected clients
+func sendToAllClients(msg string) {
+	clientsLock.Lock()
+	defer clientsLock.Unlock()
+	for client := range clients {
+		client.WriteMessage(websocket.TextMessage, []byte(msg))
+	}
+}
+
+// WebSocket handler
+func handleWS(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("[Error]: WebSocket upgrade failed:", err)
+		return
+	}
+	defer conn.Close()
+
+	// Register client
+	clientsLock.Lock()
+	clients[conn] = struct{}{}
+	clientsLock.Unlock()
+
+	defer func() {
+		clientsLock.Lock()
+		delete(clients, conn)
+		clientsLock.Unlock()
+	}()
+
+	for {
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			return
+		}
+		script := string(msg)
+		go runPythonScript(script)
 	}
 }
 
 func main() {
-	var wg sync.WaitGroup
+	http.HandleFunc("/", serveHome)
+	http.HandleFunc("/ws", handleWS)
 
-	// Start both scripts concurrently
-	wg.Add(2)
-	go runPythonScript("script1.py", &wg)
-	go runPythonScript("script2.py", &wg)
-
-	// Wait for both scripts to finish
-	wg.Wait()
+	log.Println("Server started at http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }

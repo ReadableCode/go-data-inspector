@@ -4,46 +4,67 @@ import (
 	"bufio"
 	"fmt"
 	"os/exec"
-	"strings"
-	"time"
+	"sync"
 )
 
-// Function to run Python scripts and capture output
-func runPythonScript(script string, output *string, update chan<- struct{}) {
-	cmd := exec.Command("python", script)
-	stdout, _ := cmd.StdoutPipe()
-	stderr, _ := cmd.StderrPipe()
-	cmd.Start()
+// Function to run a Python script concurrently and stream its output
+func runPythonScript(script string, wg *sync.WaitGroup) {
+	defer wg.Done()
 
-	scan := func(pipe *bufio.Reader) {
-		for {
-			line, err := pipe.ReadString('\n')
-			if err != nil {
-				break
-			}
-			*output += strings.TrimSpace(line) + "\n"
-			update <- struct{}{} // Notify that new output is available
-		}
+	cmd := exec.Command("python", script)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Println("[Error]: Failed to create stdout pipe for", script, ":", err)
+		return
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		fmt.Println("[Error]: Failed to create stderr pipe for", script, ":", err)
+		return
 	}
 
-	go scan(bufio.NewReader(stdout))
-	go scan(bufio.NewReader(stderr))
-	cmd.Wait()
-	close(update) // Signal that script execution is done
+	if err := cmd.Start(); err != nil {
+		fmt.Println("[Error]: Failed to start", script, ":", err)
+		return
+	}
+
+	// Ensure goroutines for reading stdout and stderr start before waiting
+	var outputWg sync.WaitGroup
+	outputWg.Add(2)
+
+	go func() {
+		defer outputWg.Done()
+		scanner := bufio.NewScanner(stdout)
+		for scanner.Scan() {
+			fmt.Println("[Output "+script+"]:", scanner.Text())
+		}
+	}()
+
+	go func() {
+		defer outputWg.Done()
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			fmt.Println("[Error "+script+"]:", scanner.Text())
+		}
+	}()
+
+	// Wait for both output goroutines to finish reading before waiting for process exit
+	outputWg.Wait()
+
+	// Now wait for the script to fully exit
+	if err := cmd.Wait(); err != nil {
+		fmt.Println("[Error]:", script, "exited with error:", err)
+	}
 }
 
 func main() {
-	var output string
-	update := make(chan struct{}, 1)
+	var wg sync.WaitGroup
 
-	// Run Python script in a goroutine
-	go runPythonScript("script1.py", &output, update)
+	// Start both scripts concurrently
+	wg.Add(2)
+	go runPythonScript("script1.py", &wg)
+	go runPythonScript("script2.py", &wg)
 
-	// Wait for updates and print new output
-	for range update {
-		fmt.Println(output)
-	}
-
-	// Ensure all output is printed before exiting
-	time.Sleep(1 * time.Second)
+	// Wait for both scripts to finish
+	wg.Wait()
 }

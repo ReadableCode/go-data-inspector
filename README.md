@@ -34,11 +34,20 @@ go run . --cli --file ..\data\data.csv --interactive
 cd backend
 go mod tidy
 go build
-# run the web app
-.\go-data-inspector
-# run the cli app
+# run the web app on windows
+.\go-data-inspector.exe
+# run the web app on linux
+chmod +x go-data-inspector
+./go-data-inspector
+# run the cli app on windows
 .\go-data-inspector --cli --file ..\data\data.csv
 .\go-data-inspector --cli --file ..\data\data.csv --filter "Age>=30"
 .\go-data-inspector --cli --file ..\data\data.csv --filter "Age>=30" --sort "Age" --desc
 .\go-data-inspector --cli --file ..\data\data.csv --interactive
+# run the cli app on linux
+chmod +x go-data-inspector
+./go-data-inspector --cli --file ../data/data.csv
+./go-data-inspector --cli --file ../data/data.csv --filter "Age>=30"
+./go-data-inspector --cli --file ../data/data.csv --filter "Age>=30" --sort "Age" --desc
+./go-data-inspector --cli --file ../data/data.csv --interactive
 ```
